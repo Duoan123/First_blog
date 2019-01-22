@@ -1,0 +1,25 @@
+<div class="panel panel-primary">
+    <div class="panel-heading">文章分类</div>
+    <div class="panel-body">
+        {% for category in category_list %}
+            <p><a href="/blog_app/{{ username }}/category/{{ category.nid }}">{{ category.title }}({{ category.article_set.count }})</a></p>
+        {% endfor %}
+    </div>
+</div>
+<div class="panel panel-warning">
+    <div class="panel-heading">标签分类</div>
+    <div class="panel-body">
+        {% for tag in tag_list %}
+            <p><a href="/blog_app/{{ username }}/tag/{{ tag.nid }}">{{ tag.title }}({{ tag.article_set.count }})</a></p>
+        {% endfor %}
+    </div>
+</div>
+<div class="panel panel-info">
+    <div class="panel-heading">时间分类</div>
+    <div class="panel-body">
+        {% for archive in archive_list %}
+{#            <p><a href="/blog_app/{{ username }}/archive/{{ archive.archive_y }}/{{ archive.archive_m }}">{{ archive.archive_y }}年{{ archive.archive_m }}月({{ archive.n }})</a></p>#}
+            <p><a href="/blog_app/{{ username }}/date/{{ archive.archive_y }}-{{ archive.archive_m }}">{{ archive.archive_y }}年{{ archive.archive_m }}月({{ archive.n }})</a></p>
+        {% endfor %}
+    </div>
+</div>

@@ -1,0 +1,31 @@
+{% extends "person_base.html" %}
+{% block page_main %}
+    <h5>该分类下的文章</h5>
+    <hr>
+    <div class="article_list">
+        {% for article in article_list %}
+            <div class="article">
+                <a href="/blog_app/{{ username }}/article/{{ article.pk }}"><h3>{{ article.title }}</h3></a>
+                <div class="media">
+                    <div class="media-left">
+                        <a href="#"><img class="media-object author-avatar" src="/media/{{ article.user.avatar }}" alt="..."></a>
+                    </div>
+                    <div class="media-body">
+                        <p> {{ article.desc }}</p>
+                    </div>
+                </div>
+                <div class="article-foot">
+                    <span><a href="/blog_app/{{ article.user.username }}">{{ article.user.username }}</a></span>发布于
+                    <span>{{ article.create_time|date:'Y-m-d H:i' }}</span>
+                    {#  <span class="glyphicon glyphicon-comment"><a href="#">评论数({{ article.comment_count }})</a></span>#}
+                    {#   <span class="glyphicon glyphicon-thumbs-up">点赞({{ article.up_count }})</span>#}
+                    <span><i class="fa fa-commenting-o"></i><a
+                            href="#">评论数({{ article.comment_count }})</a></span>
+                    <span><i class="fa fa-thumbs-o-up"></i><a class="up_count" href="#">点赞({{ article.up_count }})</a></span>
+                    <hr>
+                </div>
+
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1"> <!-- 支持手机端自动样式调整 -->
+    <title>欢迎注册</title>
+    <link href="https://cdn.bootcss.com/normalize/8.0.0/normalize.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/bootstrap/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/mystyle.css">
+</head>
+<body>
+<div class="container">
+    <div class="row">
+        <div class="col-md-6 col-md-offset-3">
+            <div class="page-header">
+                <h1>注册</h1>
+            </div>
+
+            <form action="/reg/" method="post" enctype="multipart/form-data" novalidate autocomplete="off" class="form-horizontal">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="{{ form_obj.username.id_for_label }}"
+                           class="col-sm-2 control-label">{{ form_obj.username.label }}</label>
+                    <div class="col-sm-8">
+                        {{ form_obj.username }}
+                        <span class="help-block">{{ form_obj.username.errors.0 }}</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form_obj.password.id_for_label }}"
+                           class="col-sm-2 control-label">{{ form_obj.password.label }}</label>
+                    <div class="col-sm-8">
+                        {{ form_obj.password }}
+                        <span class="help-block">{{ form_obj.password.errors.0 }}</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form_obj.re_pwd.id_for_label }}"
+                           class="col-sm-2 control-label">{{ form_obj.re_pwd.label }}</label>
+                    <div class="col-sm-8">
+                        {{ form_obj.re_pwd }}
+                        <span class="help-block">{{ form_obj.re_pwd.errors.0 }}</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form_obj.email.id_for_label }}"
+                           class="col-sm-2 control-label">{{ form_obj.email.label }}</label>
+                    <div class="col-sm-8">
+                        {{ form_obj.email }}
+                        <span class="help-block">{{ form_obj.email.errors.0 }}</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="{{ form_obj.phone.id_for_label }}"
+                           class="col-sm-2 control-label">{{ form_obj.phone.label }}</label>
+                    <div class="col-sm-8">
+                        {{ form_obj.phone }}
+                        <span class="help-block">{{ form_obj.phone.errors.0 }}</span>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="col-sm-2 control-label">头像</label>
+                    <div class="col-sm-8">
+                    <label for="id-avatar"><img id="avatar-img" src="/static/img/default.png" alt=""></label>
+                    <input accept="image/*" type="file" id="id-avatar" name="avatar" style="display: none;">
+                    <p class="help-block">点击图片选择</p>
+                </div>
+                    </div>
+
+                <div class="form-group">
+                    <div class="col-sm-offset-2 col-sm-10">
+                        <button type="button" class="btn btn-success" id="reg-submit">注册</button>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+    </div>
+</div>
+<script src="/static/jquery-3.3.1.js"></script>
+<script src="/static/bootstrap/js/bootstrap.min.js"></script>
+<script src="/static/setupajax.js"></script>
+<script>
+    //找到头像的input标签绑定change事件
+    $("#id-avatar").change(function(){
+        //1.创建一个读取文件的对象
+        var fileReader = new FileReader();
+        // 取到当前选中的头像文件
+        console.log(this.files[0]);
+        // 读取你选中的那个文件
+        fileReader.readAsDataURL(this.files[0]); //读取文件需要时间
+        fileReader.onload = function(){
+            //2.等上一步读完文件之后才把图片加载到img标签中
+            {#console.log(fileReader.result)#}
+            $("#avatar-img").attr("src",fileReader.result);
+        };
+    });
+
+    //用AJAX提交form表单、上传文件
+    $("#reg-submit").click(function () {
+        //观察发现 django form表单提交过来的id为： "id_"+"字段名"
+        var formData = new FormData();
+        formData.append("username",$("#id_username").val());
+        formData.append("password",$("#id_password").val());
+        formData.append("re_pwd",$("#id_re_pwd").val());
+        formData.append("email",$("#id_email").val());
+        formData.append("phone",$("#id_phone").val());
+        formData.append("avatar",$("#id-avatar")[0].files[0]);
+        formData.append("csrfmiddlewaretoken",$("[name='csrfmiddlewaretoken']").val());
+        $.ajax({
+            url:"/reg/",
+            type:"post",
+            processData:false, //告诉jQuery不要去处理发送的数据
+            contentType:false, //告诉jquery不要添加 content-type请求头
+            data:formData,
+            success:function(data){
+                if (data.status){
+                    //如果有错误，将错误显示在错误标签里
+                    $.each(data.msg,function(k,v){
+                        {#field_id = "id_"+k;#}
+                        //添加input框下面紧挨着的标签内容为value，同时添加input框父标签的父标签(div)的has-error类
+                        //form_boj.errors 本身打印是一个ul-li格式，传过来后变为一个字典 以 字段名：错误信息 为键值对
+                        // form_obj渲染的input框 id为  id_字段名
+                        $("#id_"+k).next("span").text(v[0]).parent().parent().addClass("has-error")
+                    })
+                }else {
+                    location.href = data.msg;
+                }
+            }
+        })
+    });
+    //当input框获取到焦点的时候，清除错误标签的内容
+    $("form input").focus(function(){
+        //把input框下面紧挨着的标签内容清空，同时删除input框父标签的父标签(div)的has-error类
+        $(this).next("span").text("").parent().parent().removeClass("has-error")
+    })
+</script>
+</body>
+</html>

@@ -1,0 +1,196 @@
+{% extends "person_base.html" %}
+
+{% block page_main %}
+
+    <p><h3>{{ article_obj.title }}</h3></p>
+    <div>{{ article_obj.articledetail.content|safe }}</div>
+
+    <!-- 点赞功能 开始-->
+    <div class="clearfix">
+        <div id="div_digg">
+            <div class="diggit action">
+                <span class="diggnum" id="digg_count">{{ article_obj.up_count }}</span>
+            </div>
+            <div class="buryit action">
+                <span class="burynum" id="bury_count">{{ article_obj.down_count }}</span>
+            </div>
+            <div class="clear"></div>
+            <span class="diggword" id="digg_tips" style="color: red;"></span>
+            <div class="updown_info" login_url="/login/?next={{ request.path_info }}"
+                 article_id="{{ article_obj.pk }}"></div>
+        </div>
+    </div>
+    <!-- 点赞功能 结束-->
+    {% csrf_token %}
+
+    <!-- 评论模块 开始-->
+    <div class="info" style="display: none" article_id="{{ article_obj.pk }}"></div>
+    <p>评论树</p>
+    <div class="comment_tree"></div>
+    <hr>
+    <p>评论列表</p>
+    <ul class="comment_list" id="show_comment">
+        {% for comment in comment_list %}
+            <li class="list-group-item">
+                <div>
+                    <a href="">#{{ forloop.counter }}楼</a>&nbsp;&nbsp;
+                    <span style="color: gray">{{ comment.create_time|date:'Y-m-d H:i:s' }}</span>&nbsp;&nbsp;
+                    <a href=""><span>{{ comment.user.username }}</span></a>
+                    {% if request.user.username == comment.user.username %}
+                        <a href="/comment_delete/?id={{ comment.pk }}" class="pull-right">删除</a>
+                        <a  class="pull-right" id="reply_btn" comment_id="{{ comment.pk }}" username="{{ comment.user.username }}">回复&nbsp;&nbsp;</a>
+                    {% else %}
+                        <a  class="pull-right" id="reply_btn" comment_id="{{ comment.pk }}" username="{{ comment.user.username }}">回复</a>
+                    {% endif %}
+
+                </div>
+                {% if comment.parent_comment_id %}
+                    <p class="well">
+                        {{ comment.parent_comment.user.username }}:&nbsp;{{ comment.parent_comment.content }}
+                    </p>
+                {% endif %}
+                <div class="con" >
+                    <p>
+                        {{ comment.content }}
+                    </p>
+                </div>
+            </li>
+        {% endfor %}
+
+    </ul>
+    {% if request.user.username %}
+
+        <div class="div_comment">
+            <p>昵称：<input type="text" id="tbCommentAuthor" class="author" disabled="disabled" size="50"
+                         value="{{ request.user.username }}"></p>
+            <p>评论内容</p>
+            <textarea name="" id="comment_content" cols="60" rows="10"></textarea>
+            <p>
+                <button id="comment_btn">提交评论</button>
+            </p>
+        </div>
+    {% else %}
+        <div class="div_comment">
+            <p>昵称：<input type="text" id="tbCommentAuthor" class="author" disabled="disabled" size="50"
+                         value="需要登录才能评论"><a href="/login/?next={{ request.path_info }}" class="btn ">登录</a></p>
+            <p>评论内容</p>
+            <textarea name="" id="comment_content" cols="60" rows="10" disabled></textarea>
+            <p>
+                <button id="comment_btn" disabled>提交评论</button>
+            </p>
+        </div>
+    {% endif %}
+    <!-- 评论模块 结束-->
+
+    <!-- 评论JS代码 开始-->
+    <script>
+        //获取评论数据，展示评论树结构
+        $.ajax({
+            url:"/blog_app/comment_tree/"+"{{ article_obj.pk }}",
+            success:function (data) {
+                console.log(data);
+                $.each(data,function (index,comment_dict) {
+                    var s='<div class="comment_item" tree_comment_id='+comment_dict.pk+'><span class="content">'+comment_dict.content+'</span></div>'
+                    if (comment_dict.parent_comment_id){
+                        //如果评论中父评论id有值，证明是子评论，就显示在根评论下
+                        var pid = comment_dict.parent_comment_id;
+                        $("[tree_comment_id="+pid+"]").append(s);
+                    }else {
+                        //根评论
+                        $(".comment_tree").append(s);
+                    }
+
+                })
+            }
+        });
+
+        //提交评论，普通版本的逐条显示评论
+        var pid = "";
+        $("#comment_btn").click(function () {
+            var c_content = $("#comment_content").val();
+            var article_id = $(".info").attr("article_id");
+            if (pid){
+                var index = c_content.indexOf("\n");
+                c_content = c_content.slice(index+1)
+            }
+            $.ajax({
+                url: "/blog_app/comment_up/",
+                type: "post",
+                data: {"comment_content": c_content, "article_id": article_id, "pid": pid},
+                success: function (data) {
+                   var create_time = data.create_time;
+                    var content = data.content;
+                    var username = data.username;
+
+                    var comment_li = '<li class="list-group-item"><div><span style="color: gray">' + create_time + '</span> &nbsp;&nbsp; <a href=""><span>' + username + '</span></a></div> <div class="con"> <p> ' + content + ' </p> </div> </li>';
+                    $(".comment_list").append(comment_li);
+                }
+            });
+                //清空评论
+                $("#comment_content").val("");
+                //清空pid
+                pid=""
+        });
+        $(".list-group-item #reply_btn").click(function () {
+            $("#comment_content").focus();
+            var username = $(this).attr("username");
+            var v = "@"+username+"\n";
+            $("#comment_content").val(v);
+            pid=$(this).attr("comment_id");
+        })
+    </script>
+
+    <!-- 点赞JS代码 开始-->
+    <script>
+        $("#div_digg .action").click(function () {
+            $("#digg_tips").next("a").remove()
+            var is_up = $(this).hasClass("diggit");
+            //var article_id = $(".updown_info").attr("article_id");
+            var article_id = "{{ article_obj.pk }}"; //1. 因为模板语言替换是纯文本格式，需要加引号，来在脚本语言中表示这是个字符串
+            //2.如果我们非要把这段js代码放在js文件里，那么这里的模板语言就解析不到了，需要在html文档流中随便设置一个标签，这个标签可以display为none，
+            //比如 <div id="moban" article_id="双大括号"></div>  然后在js文件中的js代码中 article_id = $("#muban").attr("article_id")这样取值
+            $.ajax({
+                url: "/blog_app/updown_acount/",
+                type: "post",
+                data: {
+                    "is_up": is_up,
+                    "article_id": article_id,
+                    "csrfmiddlewaretoken": $('[name="csrfmiddlewaretoken"]').val()
+                },
+                success: function (data) {
+                    if (data.status) {
+                        if (is_up) {
+                            var val = $("#digg_count").text();
+                            val = parseInt(val) + 1;
+                            $("#digg_count").text(val);
+                        } else {
+                            var val = $("#bury_count").text();
+                            val = parseInt(val) + 1;
+                            $("#bury_count").text(val);
+                        }
+                    } else {
+                        if (data.url) {
+                            $("#digg_tips").text(data.msg);
+                            var aEle = document.createElement("a");
+                            aEle.href = $(".updown_info").attr("login_url");
+                            aEle.innerText = "  登录";
+                            $(aEle).css("color", "blue");
+                            $("#digg_tips").after(aEle);
+                        } else {
+                            $("#digg_tips").text(data.msg);
+                        }
+                        {##}
+                        {# = data.url#}
+                        {#aEle.innerText="登录"#}
+                        {#$("#digg_tips").after(aEle)#}
+                    }
+                }
+            });
+            setTimeout(function () {
+                $("#digg_tips").text("")
+            }, 2000)
+        })
+    </script>
+    <!-- 点赞JS代码 结束-->
+
+{% endblock %}
